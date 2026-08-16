@@ -85,10 +85,28 @@ class CameraManager {
     this.moveTo(this.defaultPosition, this.defaultTarget, duration, { ease: "power2.inOut" });
   }
 
-  goTopView(duration = 1.6) {
-    const top = new THREE.Vector3(0, 1.55, 0.001);
-    const tgt = new THREE.Vector3(0, -0.95, 0);
-    this.moveTo(top, tgt, duration, { ease: "power2.inOut" });
+  goTopView(duration = 1.5) {
+    const cam = this.camera;
+    const ctrl = this.controls;
+    if (!cam || !ctrl) return;
+    const zSign = this.defaultPosition.z > 0 ? -0.001 : 0.001;
+    const target = ctrl.target.clone();
+    ctrl.enabled = false;
+    gsap.killTweensOf(cam.position);
+    gsap.killTweensOf(ctrl.target);
+    gsap.to(cam.position, {
+      x: 0,
+      y: 1.3,
+      z: zSign,
+      duration,
+      ease: "power2.inOut",
+      onUpdate: () => cam.lookAt(target),
+      onComplete: () => {
+        ctrl.target.copy(target);
+        ctrl.update();
+        ctrl.enabled = true;
+      },
+    });
   }
 
   /* Subtle menu idle: slow auto-orbit, disabled on interaction. */

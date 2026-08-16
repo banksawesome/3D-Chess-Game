@@ -29,7 +29,7 @@ import {
 } from "./gameState.js";
 import { audioManager } from "./audio.js";
 import { cameraManager } from "./camera.js";
-import { HighlightManager, CHESS_COLORS } from "./highlights.js?v=1";
+import { HighlightManager, CHESS_COLORS } from "./highlights.js?v=2";
 import { ui } from "./ui.js";
 import { getChallenge } from "./challenges.js";
 
@@ -76,6 +76,7 @@ let Whiteout = 0;
 
 let pointer = new THREE.Vector2();
 let currentIntersects = [];
+let boardRaycaster = null;
 let HoveredObject = null;
 let selectedPiece = null;
 let canMoveTo = [];
@@ -573,11 +574,26 @@ function finalizePromotion(move, pawn) {
 function MoveTo(from, To, promoPiece) {
   if (game.game_over()) return;
   if (!Squares[To]) return;
-  const piece = pieceAt(from);
+  let piece = pieceAt(from);
   if (!piece) return;
 
   clearSelectPiece();
-  const move = game.move({ from, to: To, promotion: promoPiece || "q" });
+  let move = game.move({ from, to: To, promotion: promoPiece || "q" });
+  if (!move) {
+    const side = sideKey(piece.userData.color);
+    const legal = game
+      .moves({ verbose: true })
+      .find((m) => m.to === To && m.color === side);
+    if (legal) {
+      console.warn(
+        "[CHESSFALL] board desync recovered: " + from + "->" + To + " resolved as " + legal.from + "->" + To
+      );
+      from = legal.from;
+      piece = pieceAt(from) || piece;
+      piece.userData.NowAt = from;
+      move = game.move({ from: legal.from, to: To, promotion: promoPiece || "q" });
+    }
+  }
   if (!move) return;
 
   const isKnight = piece.userData.Name === "Knight";
@@ -793,9 +809,27 @@ function handlePointerMove(e) {
   pointer.y = -(y / window.innerHeight) * 2 + 1;
 }
 
+function pointerCoordsOf(e) {
+  if (e.changedTouches && e.changedTouches.length) {
+    return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  }
+  if (e.touches && e.touches.length) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  return { x: e.clientX, y: e.clientY };
+}
+
 function handlePointerClick(e) {
   if (!e.target.closest("#container")) return;
   e.preventDefault();
+
+  const coords = pointerCoordsOf(e);
+  if (coords.x !== undefined && boardRaycaster) {
+    pointer.x = (coords.x / window.innerWidth) * 2 - 1;
+    pointer.y = -(coords.y / window.innerHeight) * 2 + 1;
+    boardRaycaster.setFromCamera(pointer, camera);
+    currentIntersects = boardRaycaster.intersectObjects(targetObjects);
+  }
 
   if (currentIntersects.length > 0) {
     const obj = resolveIntersect();
@@ -854,6 +888,12 @@ function trySelectPiece(squareKey) {
     });
     ShadowAnimation(picked, 1, { r: 1, g: 1, b: 1 }, 1.1, 0.5, 0);
     canMoveTo = game.moves({ square: picked.userData.NowAt, verbose: true });
+    if (canMoveTo.length === 0) {
+      console.warn(
+        "[CHESSFALL] no legal moves found for " + picked.userData.NowAt +
+          " (" + picked.userData.color + " " + picked.userData.Name + ") — possible board desync"
+      );
+    }
     highlights.showMoves(canMoveTo, SETTINGS.showLegalMoves);
     return true;
   }
@@ -1656,6 +1696,7 @@ function load3D() {
     .detectSupport(renderer);
 
   const raycaster = new THREE.Raycaster();
+  boardRaycaster = raycaster;
   stats = new Stats();
 
   loader.load(
@@ -1951,6 +1992,28 @@ window.__CF_DEBUG__ = () => {
   };
 };
 window.__cfPick = (sq) => trySelectPiece(sq);
+window.__cfCam = () =>
+  camera ? { x: camera.position.x, y: camera.position.y, z: camera.position.z } : null;
+window.__cfDotPixel = (sq) => {
+  const m = Squares && Squares[sq];
+  if (!m || !camera || !renderer) return null;
+  const v = new THREE.Vector3();
+  m.getWorldPosition(v);
+  v.project(camera);
+  const gl = renderer.getContext();
+  if (!gl) return null;
+  const W = gl.drawingBufferWidth;
+  const H = gl.drawingBufferHeight;
+  const px = Math.max(0, Math.min(W - 1, Math.floor(((v.x + 1) / 2) * W)));
+  const py = Math.max(0, Math.min(H - 1, Math.floor(((1 - v.y) / 2) * H)));
+  const buf = new Uint8Array(4);
+  try {
+    gl.readPixels(px, H - 1 - py, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  } catch (e) {
+    return null;
+  }
+  return { r: buf[0], g: buf[1], b: buf[2], a: buf[3] };
+};
 window.__cfPiece = (sq) => {
   const p = pieceAt(sq);
   return p ? { c: p.userData.color, n: p.userData.Name } : null;
