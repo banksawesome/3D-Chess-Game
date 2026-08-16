@@ -1,175 +1,295 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>3D Chess Game</title>
     <meta charset="utf-8" />
-    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
-    <meta property="og:image" content="assets/favicon.ico">
-    <meta name="description" content="A fully interactive 3D Chess Game built using Three.js and GSAP, featuring lifelike 3D chess pieces and smooth animations. The game is powered by chess.js for accurate chess rules and move validation, allowing players to enjoy a realistic chess experience directly in the browser.">
-    <meta property="og:title" content="3D Chess game">
-    <meta property="og:description" content="A fully interactive 3D Chess Game built using Three.js and GSAP, featuring lifelike 3D chess pieces and smooth animations. The game is powered by chess.js for accurate chess rules and move validation, allowing players to enjoy a realistic chess experience directly in the browser.">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="assets/Logo192x192.png">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js"></script>
     <meta
       name="viewport"
       content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
+    <title>CHESSFALL - A Cinematic 3D Chess Experience</title>
+    <meta
+      name="description"
+      content="CHESSFALL is a cinematic 3D chess experience. Play vs AI or a friend on a physical tabletop board brought to life with animated pieces, dramatic captures, check alerts and a polished game flow."
+    />
+    <meta property="og:title" content="CHESSFALL - A Cinematic 3D Chess Experience" />
+    <meta
+      property="og:description"
+      content="A premium 3D chess game with a living tabletop board, Stockfish AI, chess challenges, replay and cinematic presentation."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0a0a0c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="apple-touch-icon" href="assets/Logo192x192.png" />
     <link type="text/css" rel="stylesheet" href="style.css" />
-    <style>
-      body {
-        background-color: #02184a;
-        color: #000;
-      }
-
-      a {
-        color: #2983ff;
-      }
-    </style>
   </head>
 
   <body>
-    <button class="ViewPoint" onclick="CameraTop()">
-      <ion-icon name="color-wand-outline"></ion-icon>
-    </button>
-    <button class="Reset" onclick="ReloadGame()">
-      <ion-icon name="refresh-outline"></ion-icon>
-    </button>
-    <div id="LoadingBox">
-      <p style="opacity: 0">Loader Text</p>
-      <p class="facts active none" style="opacity: 0;" id="factstemp">...</p>
-      <div id="LoadInnerText">
-        <div>
-          <button class="loadButton">Loading...</button>
-        </div>
-      </div>
-      <p id="facts" class="facts"></p>
-      <p id="fingers">...</p>
-    </div>
     <div id="container"></div>
 
-    <div id="celebrate">
-      <button onclick="WinnerShowCase()">Celebrate</button>
+    <!-- ======== LOADING SCREEN ======== -->
+    <div id="loading-screen" class="overlay">
+      <div class="loading-inner">
+        <div class="cf-logo loading-logo">CHESSFALL</div>
+        <div class="cf-tagline">A CINEMATIC 3D CHESS EXPERIENCE</div>
+        <div class="loading-bar"><span id="loading-bar-fill"></span></div>
+        <div id="loading-status" class="loading-status">Loading the board...</div>
+        <div id="loading-facts" class="loading-facts"></div>
+        <button id="loading-enter" class="cf-btn cf-btn-primary hidden">ENTER</button>
+      </div>
     </div>
 
-    <div id="promosion" >
-      
+    <!-- ======== MAIN MENU ======== -->
+    <div id="menu" class="overlay hidden">
+      <div class="menu-inner">
+        <div class="cf-logo menu-logo">CHESSFALL</div>
+        <div class="cf-tagline">A CINEMATIC 3D CHESS EXPERIENCE</div>
+        <nav class="menu-nav" aria-label="Game modes">
+          <button id="menu-vsai" class="cf-btn cf-btn-primary menu-item">PLAY VS AI</button>
+          <button id="menu-local" class="cf-btn menu-item">LOCAL 1V1</button>
+          <button id="menu-challenges" class="cf-btn menu-item">CHALLENGES</button>
+          <button id="menu-watch" class="cf-btn menu-item">WATCH</button>
+          <button id="menu-settings" class="cf-btn menu-item">SETTINGS</button>
+          <button id="menu-help" class="cf-btn cf-btn-ghost menu-item">HOW TO PLAY</button>
+        </nav>
+        <div class="menu-footer">BTT WEB GAME JAM · SUMMER 2026</div>
+      </div>
     </div>
 
-    <div id="info"></div>
-    <script>
-      function active() {
-        stopFacts()
-        document.getElementById("LoadingBox").style.justifyContent='center';
-        document.getElementById("LoadingBox").innerHTML=`
-          <div>
-            <div><button class="btn options" onclick="ModeSet(0)"><i class="animation"></i>1 Vs 1<i class="animation"></i></button></div>
-            <div><button class="btn options" onclick="VsBot()"><i class="animation"></i>You Vs Bot<i class="animation"></i></button></div>
-            <div><button class="btn options" onclick="ModeSet(3)"><i class="animation"></i>View Only<i class="animation"></i></button></div>
-          </div>`;
-      }
-      function ModeSet(Mode){
-        document.getElementById("LoadingBox").classList.add("Open");
-        setBotMode(Mode)
-      }
+    <!-- ======== PLAY VS AI SETUP ======== -->
+    <div id="setup-ai" class="overlay hidden">
+      <div class="panel">
+        <h2 class="panel-title">PLAY VS AI</h2>
+        <div class="setup-group">
+          <div class="setup-label">PLAY AS</div>
+          <div class="seg">
+            <button id="ai-side-white" class="seg-btn active" data-side="white">WHITE</button>
+            <button id="ai-side-black" class="seg-btn" data-side="black">BLACK</button>
+          </div>
+        </div>
+        <div class="setup-group">
+          <div class="setup-label">DIFFICULTY</div>
+          <div class="seg seg-col">
+            <button class="seg-btn diff-btn" data-difficulty="beginner">BEGINNER</button>
+            <button class="seg-btn diff-btn active" data-difficulty="challenger">CHALLENGER</button>
+            <button class="seg-btn diff-btn" data-difficulty="expert">EXPERT</button>
+            <button class="seg-btn diff-btn" data-difficulty="master">MASTER</button>
+          </div>
+        </div>
+        <div class="setup-group">
+          <div class="setup-label">CLOCK</div>
+          <div class="seg">
+            <button class="seg-btn clock-btn active" data-clock="casual">CASUAL</button>
+            <button class="seg-btn clock-btn" data-clock="rapid">RAPID 10</button>
+            <button class="seg-btn clock-btn" data-clock="blitz">BLITZ 3</button>
+            <button class="seg-btn clock-btn" data-clock="bullet">BULLET 1</button>
+          </div>
+        </div>
+        <button id="ai-start" class="cf-btn cf-btn-primary">START GAME</button>
+        <button id="ai-back" class="cf-btn cf-btn-ghost">BACK</button>
+      </div>
+    </div>
 
+    <!-- ======== LOCAL 1V1 SETUP ======== -->
+    <div id="setup-local" class="overlay hidden">
+      <div class="panel">
+        <h2 class="panel-title">LOCAL 1V1</h2>
+        <p class="panel-note">Two players. One device. White moves first.</p>
+        <div class="setup-group">
+          <div class="setup-label">CLOCK</div>
+          <div class="seg">
+            <button class="seg-btn clock-btn active" data-clock="casual">CASUAL</button>
+            <button class="seg-btn clock-btn" data-clock="rapid">RAPID 10</button>
+            <button class="seg-btn clock-btn" data-clock="blitz">BLITZ 3</button>
+            <button class="seg-btn clock-btn" data-clock="bullet">BULLET 1</button>
+          </div>
+        </div>
+        <button id="local-start" class="cf-btn cf-btn-primary">START GAME</button>
+        <button id="local-back" class="cf-btn cf-btn-ghost">BACK</button>
+      </div>
+    </div>
 
+    <!-- ======== CHALLENGES ======== -->
+    <div id="challenges-menu" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2 class="panel-title">CHALLENGES</h2>
+        <div id="challenge-list" class="challenge-list"></div>
+        <div id="challenges-progress" class="challenges-progress">0 / 0 COMPLETED</div>
+        <button id="challenges-back" class="cf-btn cf-btn-ghost">BACK</button>
+      </div>
+    </div>
 
-      function VsBot(){
-        document.getElementById("LoadingBox").innerHTML=`
-          <div>
-            <p style="margin: 0;background-color: rgba(0, 0, 0, 0.596);border-radius: 10px;">Play us</p>
-            <div><button class="btn options" onclick="ModeSet(2)" style="color: black;background-color: white;"><i class=""></i>White<i class=""></i></button></div>
-            <div><button class="btn options" onclick="ModeSet(1)"><i class=""></i>Black<i class=""></i></button></div>
-          </div>`
-      }
+    <div id="challenge-info" class="overlay hidden">
+      <div class="panel">
+        <h2 id="challenge-title" class="panel-title">CHECKMATE IN 1</h2>
+        <p id="challenge-desc" class="panel-note"></p>
+        <p id="challenge-meta" class="challenge-meta"></p>
+        <button id="challenge-start" class="cf-btn cf-btn-primary">PLAY PUZZLE</button>
+        <button id="challenge-cancel" class="cf-btn cf-btn-ghost">BACK</button>
+      </div>
+    </div>
 
-      window.addEventListener("load", function () {
-        const instruction = document.getElementById("fingers");
+    <div id="challenge-result" class="overlay hidden">
+      <div class="panel">
+        <h2 id="challenge-result-title" class="panel-title">SOLVED</h2>
+        <p id="challenge-result-text" class="panel-note"></p>
+        <button id="challenge-next" class="cf-btn cf-btn-primary">NEXT CHALLENGE</button>
+        <button id="challenge-retry" class="cf-btn">TRY AGAIN</button>
+        <button id="challenge-exit" class="cf-btn cf-btn-ghost">MENU</button>
+      </div>
+    </div>
 
-        if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
-          instruction.textContent = "Use 2 fingers to navigate";
-        } else {
-          instruction.textContent = "Use mouse to navigate";
-        }
-        load3D();
-        // active()
-      }); 
-      const facts = [
-        "The longest official chess game lasted 269 moves.",
-        "The word 'checkmate' comes from Persian 'shah mat' – 'the king is dead'.",
-        "In 1989, a computer beat a human master for the first time.",
-        "The second book ever printed in English was about chess.",
-        "There are more possible chess games than atoms in the universe.",
-        "Bobby Fischer once played 50 simultaneous games – and won them all.",
-        "The first mechanical chess clock was invented in 1883.",
-        "A knight on the rim is considered dim – harder to use effectively.",
-        "In 2003, Kasparov drew against the chess computer 'Deep Junior'.",
-        "The first computer to beat a world champion was Deep Blue in 1997.",
-        "Blindfold chess masters can play dozens of games without seeing boards.",
-        "The longest possible game under 50-move rule is 5949 moves.",
-        "Pawn promotion doesn’t have to be a queen – it can be any piece.",
-        "Castling was introduced in the 1500s to speed up the game.",
-        "In 1924, the International Chess Federation (FIDE) was founded.",
-        "World champion Emanuel Lasker held his title for 27 years.",
-        "You can checkmate with just two bishops and a king.",
-        "The knight’s tour puzzle is over 1000 years old.",
-        "Chess boxing is a real sport – alternating rounds of chess and boxing.",
-        "In 1972, the Fischer-Spassky match was called the 'Match of the Century'."
-      ];
+    <!-- ======== GAME HUD ======== -->
+    <header id="hud" class="hud hidden">
+      <div class="hud-brand">CHESSFALL</div>
+      <div id="turn-indicator" class="hud-turn">WHITE'S TURN</div>
+      <div class="hud-right">
+        <div class="hud-clock" id="clock-white">∞</div>
+        <div class="hud-clock" id="clock-black">∞</div>
+        <button id="btn-history" class="hud-btn" title="Move history" aria-label="Move history">≡</button>
+        <button id="btn-top" class="hud-btn" title="Top view" aria-label="Top view">TOP</button>
+        <button id="btn-camreset" class="hud-btn" title="Reset camera" aria-label="Reset camera">⟲</button>
+        <button id="btn-pause" class="hud-btn" title="Pause" aria-label="Pause">☰</button>
+      </div>
+    </header>
 
-      let shuffledFacts = [...facts];
-      let factIndex = 0;
-      let factInterval = null;
+    <aside id="move-history" class="history hidden" aria-label="Move history">
+      <div class="history-head">
+        <span>MOVES</span>
+        <button id="history-close" class="hud-btn" aria-label="Close move history">✕</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </aside>
 
-      function shuffleFacts() {
-        shuffledFacts = facts.sort(() => Math.random() - 0.5);
-        factIndex = 0;
-      }
+    <!-- ======== IN-GAME INDICATORS ======== -->
+    <div id="thinking" class="indicator hidden">AI IS THINKING<span class="dots"></span></div>
+    <div id="check-indicator" class="indicator check-indicator hidden">CHECK</div>
+    <div id="hint" class="hint hidden">Select a piece to see its legal moves.</div>
+    <div id="audio-note" class="hint hidden"></div>
+    <button id="skip" class="skip-btn hidden">TAP TO SKIP</button>
 
-      function showFact() {
-        if (factIndex >= shuffledFacts.length-1) {
-          shuffleFacts(); 
-        }
-        document.getElementById("facts").classList.remove("active")
-        
-        setTimeout(()=>{
-          document.getElementById("factstemp").innerText=document.getElementById("facts").innerText = shuffledFacts[factIndex];
-          document.getElementById("facts").classList.add("active")
-        },300)
-        factIndex++;
-      }
+    <!-- ======== PROMOTION ======== -->
+    <div id="promotion" class="overlay promo-overlay hidden">
+      <div class="panel promo-card">
+        <div class="panel-title">PROMOTE TO</div>
+        <div class="promo-options">
+          <button class="promo-btn" data-piece="q">♕ QUEEN</button>
+          <button class="promo-btn" data-piece="r">♖ ROOK</button>
+          <button class="promo-btn" data-piece="b">♗ BISHOP</button>
+          <button class="promo-btn" data-piece="n">♘ KNIGHT</button>
+        </div>
+      </div>
+    </div>
 
-      function startFacts() {
-        shuffleFacts();
-        showFact();
-        factInterval = setInterval(showFact, 10000); 
-      }
+    <!-- ======== PAUSE ======== -->
+    <div id="pause-menu" class="overlay hidden">
+      <div class="panel">
+        <h2 class="panel-title">PAUSED</h2>
+        <button id="pause-resume" class="cf-btn cf-btn-primary">RESUME</button>
+        <button id="pause-restart" class="cf-btn">RESTART</button>
+        <button id="pause-settings" class="cf-btn">SETTINGS</button>
+        <button id="pause-mainmenu" class="cf-btn cf-btn-ghost">MAIN MENU</button>
+      </div>
+    </div>
 
-      function stopFacts() {
-        clearInterval(factInterval);
-      }
-      startFacts();
-    </script>
+    <!-- ======== SETTINGS ======== -->
+    <div id="settings" class="overlay hidden">
+      <div class="panel panel-wide">
+        <h2 class="panel-title">SETTINGS</h2>
+        <div class="setting-row">
+          <span>MUSIC</span>
+          <button id="set-music" class="toggle" aria-label="Toggle music"></button>
+        </div>
+        <div class="setting-row">
+          <span>SOUND EFFECTS</span>
+          <button id="set-sfx" class="toggle" aria-label="Toggle sound effects"></button>
+        </div>
+        <div class="setting-row">
+          <span>MUSIC VOLUME</span>
+          <input id="set-music-vol" class="slider" type="range" min="0" max="100" value="40" />
+        </div>
+        <div class="setting-row">
+          <span>SFX VOLUME</span>
+          <input id="set-sfx-vol" class="slider" type="range" min="0" max="100" value="70" />
+        </div>
+        <div class="setting-row">
+          <span>CINEMATIC CAMERA</span>
+          <button id="set-cine" class="toggle" aria-label="Toggle cinematic camera"></button>
+        </div>
+        <div class="setting-row">
+          <span>CAMERA SHAKE</span>
+          <button id="set-shake" class="toggle" aria-label="Toggle camera shake"></button>
+        </div>
+        <div class="setting-row">
+          <span>SHOW LEGAL MOVES</span>
+          <button id="set-legal" class="toggle" aria-label="Toggle legal move hints"></button>
+        </div>
+        <div class="settings-actions">
+          <button id="settings-reset" class="cf-btn">RESET</button>
+          <button id="settings-close" class="cf-btn cf-btn-primary">CLOSE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======== RESULT ======== -->
+    <div id="result" class="overlay hidden">
+      <div class="panel result-card">
+        <h2 id="result-title" class="panel-title result-title">CHECKMATE</h2>
+        <div id="result-subtitle" class="result-subtitle">YOU WIN</div>
+        <div class="result-stats">
+          <div class="stat-box"><span id="result-moves" class="stat">0</span><span class="stat-label">MOVES</span></div>
+          <div class="stat-box"><span id="result-captures" class="stat">0</span><span class="stat-label">CAPTURES</span></div>
+          <div class="stat-box"><span id="result-time" class="stat">--</span><span class="stat-label">TIME</span></div>
+        </div>
+        <button id="result-replay" class="cf-btn">REPLAY</button>
+        <button id="result-again" class="cf-btn cf-btn-primary">PLAY AGAIN</button>
+        <button id="result-menu" class="cf-btn cf-btn-ghost">MAIN MENU</button>
+      </div>
+    </div>
+
+    <!-- ======== HOW TO PLAY ======== -->
+    <div id="help" class="overlay hidden">
+      <div class="panel">
+        <h2 class="panel-title">HOW TO PLAY</h2>
+        <p class="panel-note">Select a piece. Its legal moves will be highlighted. Select a destination to move.</p>
+        <p class="panel-note">Drag to orbit the camera, scroll or pinch to zoom.</p>
+        <p class="panel-note">Goal: checkmate the opposing king.</p>
+        <button id="help-close" class="cf-btn cf-btn-primary">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- ======== REPLAY CONTROLS ======== -->
+    <div id="replay-controls" class="replay-bar hidden">
+      <span id="replay-label" class="replay-label">MOVE 0 / 0</span>
+      <button id="rp-restart" class="replay-btn" aria-label="Restart replay">⏮</button>
+      <button id="rp-prev" class="replay-btn" aria-label="Previous move">◀</button>
+      <button id="rp-play" class="replay-btn" aria-label="Play or pause">▶</button>
+      <button id="rp-next" class="replay-btn" aria-label="Next move">▶|</button>
+      <button id="rp-exit" class="cf-btn cf-btn-ghost">EXIT</button>
+    </div>
+
+    <!-- ======== FATAL ERROR ======== -->
+    <div id="fatal-error" class="overlay hidden">
+      <div class="panel">
+        <h2 class="panel-title">SOMETHING WENT WRONG</h2>
+        <p id="fatal-error-msg" class="panel-note"></p>
+        <p class="panel-note">Details are logged in the browser console (F12).</p>
+        <button id="fatal-error-reload" class="cf-btn cf-btn-primary">RELOAD</button>
+      </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script type="importmap">
       {
         "imports": {
-          "three": "./build/three.module.js",
+          "three": "./build/three.module.js?v=1",
           "three/addons/": "./jsm/"
         }
       }
     </script>
-
-    <script type="module" src="main.js"></script>
-    <script
-      type="module"
-      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
-    ></script>
-    <script
-      nomodule
-      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
-    ></script>
+    <script type="module" src="main.js?v=2"></script>
   </body>
 </html>

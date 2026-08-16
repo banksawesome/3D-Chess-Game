@@ -1,23 +1,22 @@
 {
-    "name": "3D Chess game",
-    "short_name": "3D Chess game",
-    "description": "A fully interactive 3D Chess Game built using Three.js and GSAP, featuring lifelike 3D chess pieces and smooth animations. The game is powered by chess.js for accurate chess rules and move validation, allowing players to enjoy a realistic chess experience directly in the browser.",
-    "version": "3.0",
-    "start_url": "index.html",
-    "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
-    "icons": [
-      {
-        "src": "assets/Logo192x192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "assets/Logo512x512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
-  
+  "name": "CHESSFALL — A Cinematic 3D Chess Experience",
+  "short_name": "CHESSFALL",
+  "description": "A cinematic 3D chess experience built with Three.js, GSAP, chess.js and Stockfish. Play against the AI, challenge friends locally, solve crafted puzzles, and watch two engines battle it out.",
+  "version": "3.0",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "icons": [
+    {
+      "src": "assets/Logo192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/Logo512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
