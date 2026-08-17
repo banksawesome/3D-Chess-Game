@@ -808,8 +808,11 @@ function PromotionCheck(from, To, promo) {
 function handlePointerMove(e) {
   const x = e.type === "touchstart" ? e.touches[0].clientX : e.clientX;
   const y = e.type === "touchstart" ? e.touches[0].clientY : e.clientY;
-  pointer.x = (x / window.innerWidth) * 2 - 1;
-  pointer.y = -(y / window.innerHeight) * 2 + 1;
+  const rect = renderer && renderer.domElement
+    ? renderer.domElement.getBoundingClientRect()
+    : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+  pointer.x = ((x - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((y - rect.top) / rect.height) * 2 + 1;
 }
 
 function pointerCoordsOf(e) {
@@ -823,13 +826,17 @@ function pointerCoordsOf(e) {
 }
 
 function handlePointerClick(e) {
-  if (!e.target.closest("#container")) return;
+  const container = document.getElementById("container");
+  if (!e.target.closest("#container") && (!renderer || e.target !== renderer.domElement)) return;
   e.preventDefault();
 
   const coords = pointerCoordsOf(e);
   if (coords.x !== undefined && boardRaycaster) {
-    pointer.x = (coords.x / window.innerWidth) * 2 - 1;
-    pointer.y = -(coords.y / window.innerHeight) * 2 + 1;
+    const rect = renderer && renderer.domElement
+      ? renderer.domElement.getBoundingClientRect()
+      : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    pointer.x = ((coords.x - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((coords.y - rect.top) / rect.height) * 2 + 1;
     boardRaycaster.setFromCamera(pointer, camera);
     currentIntersects = boardRaycaster.intersectObjects(targetObjects);
   }
@@ -1658,7 +1665,9 @@ function onAllLoaded() {
   ui.setLoadingProgress(1);
   ui.showEnterButton();
   cameraManager.startIdle();
-  setState(State.MENU);
+  if (getState() !== State.PLAYING && getState() !== State.CHALLENGE && getState() !== State.AI_THINKING && getState() !== State.ANIMATING && getState() !== State.PROMOTION) {
+    setState(State.MENU);
+  }
   window.__CHESSFALL_READY__ = true;
   window.__CF_GLB_OK__ = true;
   window.__CF_PIECES__ = pieceCount;
@@ -2021,11 +2030,16 @@ window.__cfProject = (sq) => {
   const v = new THREE.Vector3();
   m.getWorldPosition(v);
   v.project(camera);
+  const rect = renderer && renderer.domElement
+    ? renderer.domElement.getBoundingClientRect()
+    : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
   return {
-    x: ((v.x + 1) / 2) * window.innerWidth,
-    y: ((1 - v.y) / 2) * window.innerHeight,
-    w: window.innerWidth,
-    h: window.innerHeight,
+    x: rect.left + ((v.x + 1) / 2) * rect.width,
+    y: rect.top + ((1 - v.y) / 2) * rect.height,
+    w: rect.width,
+    h: rect.height,
+    l: rect.left,
+    t: rect.top,
   };
 };
 

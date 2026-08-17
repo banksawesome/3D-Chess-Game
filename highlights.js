@@ -29,40 +29,8 @@ export class HighlightManager {
     this.scene = scene;
     this.squares = squares;
     this._tinted = new Set();
-    this.group = new THREE.Group();
-    scene.add(this.group);
-    this.rings = {};
     this.checkRing = null;
     this.checkTween = null;
-    this._build();
-  }
-
-  _build() {
-    const ringGeo = new THREE.RingGeometry(RING_INNER, RING_OUTER, 40);
-    const worldPos = new THREE.Vector3();
-
-    for (const key of Object.keys(this.squares)) {
-      const square = this.squares[key];
-      square.getWorldPosition(worldPos);
-      const y = worldPos.y + MARKER_Y_OFFSET;
-
-      const ring = new THREE.Mesh(
-        ringGeo,
-        new THREE.MeshBasicMaterial({
-          color: CHESS_COLORS.LEGAL_CAPTURE,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-          depthTest: false,
-        })
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(worldPos.x, y, worldPos.z);
-      ring.renderOrder = 6;
-
-      this.group.add(ring);
-      this.rings[key] = ring;
-    }
   }
 
   /* ---------- legal-move / last-move tinting ---------- */
@@ -96,12 +64,7 @@ export class HighlightManager {
       }
     }
     this._tinted.clear();
-    for (const key of Object.keys(this.rings)) {
-      const ring = this.rings[key];
-      if (ring.material.opacity > 0.01) {
-        ring.material.opacity = 0;
-      }
-    }
+    this.clearCheck();
   }
 
   _tintSquare(key, color) {
@@ -118,16 +81,33 @@ export class HighlightManager {
     });
   }
 
-  /* ---------- check ring (overlay) ---------- */
+  /* ---------- check ring (overlay, created on demand) ---------- */
 
   showCheck(squareKey) {
     this.clearCheck();
-    if (!squareKey || !this.rings[squareKey]) return;
-    const ring = this.rings[squareKey];
-    this.checkRing = ring;
-    ring.material.color.set(CHESS_COLORS.CHECK);
-    ring.material.opacity = 0.9;
+    if (!squareKey || !this.squares[squareKey]) return;
+    const square = this.squares[squareKey];
+    const worldPos = new THREE.Vector3();
+    square.getWorldPosition(worldPos);
+    const y = worldPos.y + MARKER_Y_OFFSET;
+
+    const ringGeo = new THREE.RingGeometry(RING_INNER, RING_OUTER, 40);
+    const ring = new THREE.Mesh(
+      ringGeo,
+      new THREE.MeshBasicMaterial({
+        color: CHESS_COLORS.CHECK,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        depthTest: false,
+      })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(worldPos.x, y, worldPos.z);
+    ring.renderOrder = 6;
     ring.scale.set(1.05, 1.05, 1);
+    this.scene.add(ring);
+    this.checkRing = ring;
     this.checkTween = gsap.to(ring.scale, {
       x: 1.35,
       z: 1.35,
@@ -144,21 +124,14 @@ export class HighlightManager {
       this.checkTween = null;
     }
     if (this.checkRing) {
-      this.checkRing.material.opacity = 0;
-      this.checkRing.scale.set(1, 1, 1);
-      this.checkRing.material.color.set(CHESS_COLORS.LEGAL_CAPTURE);
+      this.scene.remove(this.checkRing);
+      this.checkRing.geometry.dispose();
+      this.checkRing.material.dispose();
       this.checkRing = null;
     }
   }
 
   dispose() {
-    this.clearCheck();
     this.clear();
-    gsap.killTweensOf(this.group.children);
-    this.scene.remove(this.group);
-    for (const mesh of this.group.children) {
-      mesh.geometry.dispose();
-      mesh.material.dispose();
-    }
   }
 }

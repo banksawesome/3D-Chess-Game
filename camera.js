@@ -63,14 +63,20 @@ class CameraManager {
       x: position.x, y: position.y, z: position.z,
       duration,
       ease,
-      onUpdate: () => ctrl.update(),
     });
     gsap.to(ctrl.target, {
       x: target.x, y: target.y, z: target.z,
       duration,
       ease,
-      onUpdate: () => ctrl.update(),
       onComplete: () => {
+        cam.position.set(position.x, position.y, position.z);
+        ctrl.target.set(target.x, target.y, target.z);
+        ctrl._sphericalDelta.set(0, 0, 0);
+        ctrl._panOffset.set(0, 0, 0);
+        const wasAutoRotate = ctrl.autoRotate;
+        ctrl.autoRotate = false;
+        ctrl.update();
+        ctrl.autoRotate = wasAutoRotate;
         this.cinematic = false;
         if (onComplete) onComplete();
       },
@@ -84,7 +90,12 @@ class CameraManager {
     gsap.killTweensOf(this.controls.target);
     this.camera.position.set(position.x, position.y, position.z);
     this.controls.target.set(target.x, target.y, target.z);
+    this.controls._sphericalDelta.set(0, 0, 0);
+    this.controls._panOffset.set(0, 0, 0);
+    const wasAutoRotate = this.controls.autoRotate;
+    this.controls.autoRotate = false;
     this.controls.update();
+    this.controls.autoRotate = wasAutoRotate;
     this.cinematic = false;
   }
 
@@ -102,22 +113,31 @@ class CameraManager {
     this.cinematic = true;
     gsap.killTweensOf(cam.position);
     gsap.killTweensOf(ctrl.target);
+    ctrl.target.copy(target);
+    const reenable = () => {
+      ctrl.enabled = true;
+      this.cinematic = false;
+      window.removeEventListener("pointerdown", reenable);
+      window.removeEventListener("touchstart", reenable);
+    };
     gsap.to(cam.position, {
       x: 0,
       y: 1.3,
       z: zSign,
       duration,
       ease: "power2.inOut",
-      onUpdate: () => {
-        ctrl.target.copy(target);
-        ctrl.update();
-      },
       onComplete: () => {
         cam.position.set(0, 1.3, zSign);
         ctrl.target.copy(target);
+        ctrl._sphericalDelta.set(0, 0, 0);
+        ctrl._panOffset.set(0, 0, 0);
+        const wasAutoRotate = ctrl.autoRotate;
+        ctrl.autoRotate = false;
         ctrl.update();
-        ctrl.enabled = true;
-        this.cinematic = false;
+        ctrl.autoRotate = wasAutoRotate;
+        window.addEventListener("pointerdown", reenable, { once: true });
+        window.addEventListener("touchstart", reenable, { once: true });
+        setTimeout(reenable, 3000);
       },
     });
   }
