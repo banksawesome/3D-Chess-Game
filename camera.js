@@ -16,6 +16,7 @@ class CameraManager {
     this.saved = null;
     this.shakeStrength = 0;
     this.idle = false;
+    this.cinematic = false;
   }
 
   init(camera, controls) {
@@ -55,6 +56,7 @@ class CameraManager {
     const ctrl = this.controls;
     const ease = opts.ease || "power2.inOut";
     const onComplete = opts.onComplete || null;
+    this.cinematic = true;
     gsap.killTweensOf(cam.position);
     gsap.killTweensOf(ctrl.target);
     gsap.to(cam.position, {
@@ -68,17 +70,22 @@ class CameraManager {
       duration,
       ease,
       onUpdate: () => ctrl.update(),
-      onComplete,
+      onComplete: () => {
+        this.cinematic = false;
+        if (onComplete) onComplete();
+      },
     });
   }
 
   /* Instantly jump (used after board reset / mode flip). */
   snap(position, target) {
+    this.cinematic = true;
     gsap.killTweensOf(this.camera.position);
     gsap.killTweensOf(this.controls.target);
     this.camera.position.set(position.x, position.y, position.z);
     this.controls.target.set(target.x, target.y, target.z);
     this.controls.update();
+    this.cinematic = false;
   }
 
   resetToDefault(duration = 1.1) {
@@ -89,9 +96,10 @@ class CameraManager {
     const cam = this.camera;
     const ctrl = this.controls;
     if (!cam || !ctrl) return;
-    const zSign = this.defaultPosition.z > 0 ? -0.001 : 0.001;
-    const target = ctrl.target.clone();
+    const zSign = this.defaultPosition.z > 0 ? 0.001 : -0.001;
+    const target = new THREE.Vector3(0, -0.7, 0);
     ctrl.enabled = false;
+    this.cinematic = true;
     gsap.killTweensOf(cam.position);
     gsap.killTweensOf(ctrl.target);
     gsap.to(cam.position, {
@@ -100,11 +108,16 @@ class CameraManager {
       z: zSign,
       duration,
       ease: "power2.inOut",
-      onUpdate: () => cam.lookAt(target),
+      onUpdate: () => {
+        ctrl.target.copy(target);
+        ctrl.update();
+      },
       onComplete: () => {
+        cam.position.set(0, 1.3, zSign);
         ctrl.target.copy(target);
         ctrl.update();
         ctrl.enabled = true;
+        this.cinematic = false;
       },
     });
   }
@@ -142,6 +155,7 @@ class CameraManager {
   stopTransitions() {
     gsap.killTweensOf(this.camera.position);
     gsap.killTweensOf(this.controls.target);
+    this.cinematic = false;
   }
 }
 

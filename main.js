@@ -375,6 +375,9 @@ function placeFromFEN(fen) {
   }
   ChessPieces.length = 0;
   targetObjects.length = 0;
+  for (const key of Object.keys(Squares)) {
+    targetObjects.push(Squares[key]);
+  }
   Blackout = 0;
   Whiteout = 0;
   selectedPiece = null;
@@ -1912,7 +1915,7 @@ function load3D() {
       }
     }
 
-    controls.update();
+    if (!cameraManager.cinematic) controls.update();
     if (stats) stats.update();
     renderer.render(scene, camera);
   }
@@ -1967,13 +1970,7 @@ window.addEventListener("error", (e) => reportError("Uncaught error", e.error ||
 window.addEventListener("unhandledrejection", (e) => reportError("Unhandled rejection", e.reason));
 
 window.__CF_DEBUG__ = () => {
-  let dots = 0;
-  if (highlights) {
-    for (const key of Object.keys(highlights.dots)) {
-      if (highlights.dots[key].material.opacity > 0.1) dots++;
-      if (highlights.rings[key].material.opacity > 0.1) dots++;
-    }
-  }
+  const tintedCount = highlights ? highlights._tinted.size : 0;
   let sqSize = null;
   if (Squares && Squares.e4) {
     const g = Squares.e4.geometry;
@@ -1987,7 +1984,7 @@ window.__CF_DEBUG__ = () => {
     turn: game ? game.turn() : null,
     selected: selectedPiece ? selectedPiece.userData.NowAt : null,
     canMoveTo: canMoveTo.map((m) => m.san),
-    dotsVisible: dots,
+    tintedSquares: tintedCount,
     sqSize,
   };
 };
@@ -2020,16 +2017,15 @@ window.__cfPiece = (sq) => {
 };
 window.__cfProject = (sq) => {
   const m = Squares && Squares[sq];
-  if (!m || !camera || !renderer) return null;
+  if (!m || !camera) return null;
   const v = new THREE.Vector3();
   m.getWorldPosition(v);
   v.project(camera);
-  const rect = renderer.domElement.getBoundingClientRect();
   return {
-    x: rect.left + ((v.x + 1) / 2) * rect.width,
-    y: rect.top + ((1 - v.y) / 2) * rect.height,
-    w: rect.width,
-    h: rect.height,
+    x: ((v.x + 1) / 2) * window.innerWidth,
+    y: ((1 - v.y) / 2) * window.innerHeight,
+    w: window.innerWidth,
+    h: window.innerHeight,
   };
 };
 
